@@ -43,8 +43,23 @@ client.on('interactionCreate', async interaction => {
             })
         }
 
-        // You can add more commands here following the same pattern
-        // e.g., /plate-search, /register-owner, /player-search, /log-incident
+        else if (interaction.commandName === 'register-player') {
+            const name = interaction.options.getString('name')
+            const dob = interaction.options.getString('dob') // dob = Date of Birth
+            const residence = interaction.options.getString('residence')
+            const occ = interaction.options.getString('occ') // occ = Occupation
+
+            const fs = require('fs');
+            let plates = JSON.parse(fs.readFileSync('players.json'));
+            name[name] = dob[dob] = residence[residence] = occ[occ]
+            fs.writeFileSync('player.json', JSON.stringify(name, null, 2));
+
+            await interaction.reply({
+                content: `✅ Successfully registered your player ${name}`,
+                ephemeral:true
+            })
+
+        }
 
     } catch (error) {
         console.error(error);
