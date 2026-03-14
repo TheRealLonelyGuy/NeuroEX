@@ -4,8 +4,8 @@ const http = require('http');
 
 http.createServer((req, res) => {
   res.end('NeuroEX bot is running!');
-}).listen(process.env.PORT || 3000, () => {
-  console.log(`HTTP server running on port ${process.env.PORT || 3000}`);
+}).listen(process.env.PORT || 1000, () => {
+  console.log(`HTTP server running on port ${process.env.PORT || 1000}`);
 });
 
 const {Client, GatewayIntentBits} = require('discord.js');
