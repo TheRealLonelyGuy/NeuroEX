@@ -33,7 +33,10 @@ client.on('interactionCreate', async interaction => {
             const owner = interaction.options.getString('player');
 
             const fs = require('fs');
-            let plates = JSON.parse(fs.readFileSync('plates.json'));
+            let plates = {};
+            
+            if (fs.existsSync('plates.json'))
+                plates = JSON.parse(fs.readFileSync('plates.json'));
             plates[plate] = { owner: owner };
             fs.writeFileSync('plates.json', JSON.stringify(plates, null, 2));
 
@@ -50,20 +53,30 @@ client.on('interactionCreate', async interaction => {
             const occ = interaction.options.getString('occ') // occ = Occupation
 
             const fs = require('fs');
-            let plates = JSON.parse(fs.readFileSync('players.json'));
-            name[name] = dob[dob] = residence[residence] = occ[occ]
-            fs.writeFileSync('player.json', JSON.stringify(name, null, 2));
+            let players = {};
+
+            if (fs.existsSync('players.json')) {
+                players = JSON.parse(fs.readFileSync('players.json'));
+            }
+            
+            players[name] = {
+                dob: dob,
+                residence: residence,
+                occupation: occ
+            };
+
+            fs.writeFileSync('players.json', JSON.stringify(players, null, 2));
 
             await interaction.reply({
-                content: `✅ Successfully registered your player ${name}`,
-                ephemeral:true
+                content: `✅ Successfully registered your player **${name}**`,
+                ephemeral: true
             })
-
+            
         }
 
     } catch (error) {
         console.error(error);
-        if (!interaction.replied) {
+        if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: 'We have detected an error when running the command, please try again or contact support', ephemeral: true });
         }
     }

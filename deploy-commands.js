@@ -1,6 +1,7 @@
 const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
 const commands = [
+    // Register Plate
     new SlashCommandBuilder()
         .setName('register-plate') // command name users type after /
         .setDescription('Registers a vehicle plate for a player') // description seen in Discord
@@ -11,11 +12,33 @@ const commands = [
         .addStringOption(option =>
             option.setName('player') // second argument
                   .setDescription('The player who owns the vehicle')
-                  .setRequired(true))
+                  .setRequired(true)),
+
+    // Register Player
+    new SlashCommandBuilder()
+    .setName('register-player')
+    .setDescription('Register your player')
+    .addStringOption(option =>
+        option.setName('name')
+        .setDescription('The players name')
+            .setRequired(true))
+            .addStringOption(option =>
+                option.setName('dob')
+                .setDescription('Player Date of Birth')
+                .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('residence')
+                    .setDescription('Player residence')
+                    .setRequired(true))
+                    .addStringOption(option =>
+                        option.setName('occupation')
+                        .setDescription('Player occupation')
+                        .setRequired(true))
+        
 ]
 .map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken('MTQ4MTkyOTA4MDcxNzk3MTY2OA.GZ3xAS.HzkNqEL_eTycEIlo9Wf9Y6YPpBfhL_-12XNSw0');
+const rest = new REST({ version: '10' }).setToken('MTQ4MTkyOTA4MDcxNzk3MTY2OA.GY0UbV.-4et6dj-EDOCJ4OQ4ZDknxdoyRU29BF1rHHk1c');
 
 (async () => {
     try {
