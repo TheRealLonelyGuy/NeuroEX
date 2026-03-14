@@ -1,0 +1,33 @@
+const { REST, Routes, SlashCommandBuilder } = require('discord.js');
+
+const commands = [
+    new SlashCommandBuilder()
+        .setName('register-plate') // command name users type after /
+        .setDescription('Registers a vehicle plate for a player') // description seen in Discord
+        .addStringOption(option =>
+            option.setName('plate') // first argument
+                  .setDescription('The plate number')
+                  .setRequired(true))
+        .addStringOption(option =>
+            option.setName('player') // second argument
+                  .setDescription('The player who owns the vehicle')
+                  .setRequired(true))
+]
+.map(command => command.toJSON());
+
+const rest = new REST({ version: '10' }).setToken('MTQ4MTkyOTA4MDcxNzk3MTY2OA.GZ3xAS.HzkNqEL_eTycEIlo9Wf9Y6YPpBfhL_-12XNSw0');
+
+(async () => {
+    try {
+        console.log('Started refreshing application (/) commands.');
+
+        await rest.put(
+            Routes.applicationCommands('1481929080717971668'), // your bot's Application ID
+            { body: commands },
+        );
+
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error(error);
+    }
+})();
