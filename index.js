@@ -1,3 +1,11 @@
+const http = require('http');
+
+http.createServer((req, res) => {
+  res.end('NeuroEX bot is running!');
+}).listen(process.env.PORT || 3000, () => {
+  console.log(`HTTP server running on port ${process.env.PORT || 3000}`);
+});
+
 const {Client, GatewayIntentBits} = require('discord.js');
 
 const client = new Client({
@@ -44,4 +52,4 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.login('MTQ4MTkyOTA4MDcxNzk3MTY2OA.G-SmHB.z6ASZH1dWfaNx8ddusoBbAHUoC-ZGl1SJ1Tp38')
+client.login(process.env.DISCORD_TOKEN);
