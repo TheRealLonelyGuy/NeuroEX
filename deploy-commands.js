@@ -8,7 +8,7 @@ const commands = [
 ]
 .map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken('MTQ4MTkyOTA4MDcxNzk3MTY2OA.GEU7Nm.FCFphbz9Elq5WH1oJm9DzK8Xvmb_xmyidX6wkU');
+const rest = new REST({ version: '10' }).setToken('MTQ4MTkyOTA4MDcxNzk3MTY2OA.GLrcJB.SVY69TUvDSIp04cVLxaOeKgNGe-I0SsOvrNOV4');
 
 (async () => {
     try {
