@@ -6,7 +6,7 @@ const http = require('http');
 // ----------------------------
 // Keep bot awake
 // ----------------------------
-const SELF_URL = 'https://neuroex.onrender.com'; // Replace with your render URL
+const SELF_URL = 'https://neuroex.onrender.com'; // Replace with your URL
 http.createServer((req, res) => {
   res.end('NeuroEX bot is running!');
 }).listen(process.env.PORT || 1000, () => {
@@ -20,7 +20,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('❌ Self-ping failed:', err);
   }
-}, 4 * 60 * 1000); // 4 minutes
+}, 4 * 60 * 1000);
 
 // ----------------------------
 // Global storage for flagged users
@@ -58,15 +58,15 @@ client.on('messageCreate', async message => {
 
   console.log(`${message.author.tag} sent a link. Total flags: ${flaggedUsers[userId]}`);
 
-  if (flaggedUsers[userId] >= 10) {
+  // Alert once at 10, but keep counting
+  if (flaggedUsers[userId] === 10) {
     try {
       const owner = await message.guild.fetchOwner();
       await owner.send(
         `🚨 Suspicious behavior detected!\n` +
-        `User <@${userId}> has sent **10 links** in the server.\n` +
-        `Please check their messages.`
+        `User <@${userId}> has sent 10 links in the server.\n` +
+        `Current total: ${flaggedUsers[userId]}`
       );
-      flaggedUsers[userId] = 0; // reset after alert
     } catch (err) {
       console.error('Failed to notify server owner:', err);
     }
