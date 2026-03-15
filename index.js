@@ -43,7 +43,7 @@ client.on('interactionCreate', async interaction => {
 
     try {
         if (interaction.commandName === 'audit') {
-            await interaction.deferReply();
+            await interaction.deferReply({ ephemeral: true });
             
             const guild = interaction.guild;
             const roles = guild.roles.cache;
@@ -53,7 +53,7 @@ client.on('interactionCreate', async interaction => {
 
             roles.forEach(role => {
                 if(role.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                    warnings.push(`⚠️ Role **${role.name}** can manage roles!`);
+                    warnings.push(`⚠️ Role **${role.name}** has Administrator permissions!`);
                     score -= 15;
                 }
             });
@@ -65,7 +65,7 @@ client.on('interactionCreate', async interaction => {
             .setColor(score > 70 ? 'Green' : score > 40 ? 'Yellow' : 'Red')
             .addFields(
                 {name: 'Security Score', value: `${score}/100`},
-                {name: 'Warnings', value: warnings.length ? warnings.join('\n') : '✅ No issues detected'} 
+                {name: 'Warnings', value: warnings.length ? warnings.join('\n') : '✅ No issues detected'}
             )
             .setTimestamp();
 
