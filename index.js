@@ -55,37 +55,37 @@ client.on('interactionCreate', async interaction => {
 
             roles.forEach(role => {
                 if(role.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                    criticalWarnings.push(`🚨 Role **${role.name}** has Administrator permissions!`);
+                    criticalWarnings.push(`Role **${role.name}** has Administrator permissions!`);
                     score -= 20;
                 }
 
-                if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-                    highWarnings.push(`⚠️ Role **${role.name}** can manage roles!`)
+                else if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+                    highWarnings.push(`Role **${role.name}** can manage roles!`)
                     score -= 15;
                 }
 
-                if (role.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-                    highWarnings.push(`⚠️ Role **${role.name}** can ban members!`)
+                else if (role.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+                    highWarnings.push(`Role **${role.name}** can ban members!`)
                     score -= 10;
                 }
 
-                if (role.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-                    moderateWarnings.push(`⚠️ Role **${role.name}** can kick members!`)
+                else if (role.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+                    moderateWarnings.push(`Role **${role.name}** can kick members!`)
                     score -= 10;
                 }
 
-                 if (role.permissions.has(PermissionsBitField.Flags.MentionEveryone)) {
-                    moderateWarnings.push(`⚠️ Role **${role.name}** can ping @everyone!`)
+                 else if (role.permissions.has(PermissionsBitField.Flags.MentionEveryone)) {
+                    moderateWarnings.push(`Role **${role.name}** can ping @everyone!`)
                     score -= 5;
                 }
 
-                 if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-                    moderateWarnings.push(`⚠️ Role **${role.name}** can manage messages!`)
+                 else if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+                    moderateWarnings.push(`Role **${role.name}** can manage messages!`)
                     score -= 10;
                 }
 
-                if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
-                    highWarnings.push(`⚠️ Role **${role.name}** can manage channels!`)
+                else if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+                    highWarnings.push(`Role **${role.name}** can manage channels!`)
                     score -= 10;
                 }
             });
