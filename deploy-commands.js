@@ -31,10 +31,32 @@ const commands = [
                     .setDescription('Player residence')
                     .setRequired(true))
                     .addStringOption(option =>
-                        option.setName('occupation')
+                        option.setName('occ')
                         .setDescription('Player occupation')
-                        .setRequired(true))
+                        .setRequired(true)),
+
+    // Search For Registered Plate
+    new SlashCommandBuilder()
+    .setName('search-plate')
+    .setDescription('Search for a registered vehicle plate')
+    .addStringOption(option =>
+        option.setName('plate')
+        .setDescription('The plate number to search for')
+        .setRequired(true)),
         
+    // List All Existing Plates
+    new SlashCommandBuilder()
+    .setName('list-plates')
+    .setDescription('Displays all existing plates'),
+
+    // Delete Plates
+    new SlashCommandBuilder()
+    .setName('delete-plate')
+    .setDescription('Permanently deletes a registered vehicle plate')
+    .addStringOption(option =>
+        option.setName('plate')
+        .setDescription('The plate number to delete')
+        .setRequired(true))
 ]
 .map(command => command.toJSON());
 

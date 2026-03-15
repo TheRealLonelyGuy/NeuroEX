@@ -8,6 +8,20 @@ http.createServer((req, res) => {
   console.log(`HTTP server running on port ${process.env.PORT || 1000}`);
 });
 
+const fetch = require('node-fetch'); // Make sure you installed this
+
+const SELF_URL = 'https://neuroex.onrender.com'; // Replace with your Render URL
+
+// Ping your bot every 4 minutes to keep it awake
+setInterval(async () => {
+    try {
+        await fetch(SELF_URL);
+        console.log('✅ Self-ping successful! Bot stays awake.');
+    } catch (err) {
+        console.error('❌ Self-ping failed:', err);
+    }
+}, 4 * 60 * 1000); // 4 minutes
+
 const {Client, GatewayIntentBits} = require('discord.js');
 
 const client = new Client({
@@ -72,6 +86,80 @@ client.on('interactionCreate', async interaction => {
                 ephemeral: true
             })
             
+        }
+
+        else if (interaction.commandName === 'search-plate') {
+            const fs = require('fs');
+            const plate = interaction.options.getString('plate')
+            
+            let plates = {};
+            if (fs.existsSync('plates.json')) {
+                plates = JSON.parse(fs.readFileSync('plates.json'));
+            }
+
+            if (plates[plate]) {
+                await interaction.reply({
+                    content: `Plate **${plate}** is registered to **${plates[plate].owner}**`,
+                ephemeral: true    
+                });
+            } else {
+                await interaction.reply({
+                    content: `Plate **${plate}** is not a registered plate`,
+                    ephemeral: true
+                });
+            }
+        }
+
+        else if (interaction.commandName === 'list-plates') {
+            const fs = require('fs');
+            let plates = {};
+
+            if (fs.existsSync('plates.json')) {
+                plates = JSON.parse(fs.readFileSync('plates.json'));
+            }
+
+            if (Object.keys(plates).length === 0) {
+                await interaction.reply({
+                    content: `❌ There are no registered playes yet.`,
+                    ephemeral: true
+                });
+                return;
+            }
+
+            const plateList = Object.entries(plates)
+            .map(([plate, data]) => `**${plate}** -> ${data.owner}`)
+            .join('\n');
+
+            await interaction.reply({
+                content: `**Registered Plates:**\n${plateList}`,
+                ephemeral: true
+            });
+        }
+
+        else if (interaction.commandName === 'delete-plate') {
+            const fs = require('fs');
+            const plate = interaction.options.getString('plate');
+
+            let plates = {};
+            if (fs.existsSync(`plates.json`)) {
+                plates = JSON.parse(fs.readFileSync(`plates.json`));
+            }
+
+            if (!plates[plate]) {
+                await interaction.reply({
+                    content: `Plate **${plate}** does not exist, check list-plates for valid plates`,
+                    ephemeral: true
+                });
+                return;
+            }
+
+            delete plates[plate];
+            fs.writeFileSync('plates.json', JSON.stringify(plates, null, 2));
+
+            await interaction.reply({
+                content: `Plate **${plate}** has been permanently deleted.`,
+                ephemeral: true
+            });
         }
 
     } catch (error) {
