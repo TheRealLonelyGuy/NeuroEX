@@ -4,11 +4,15 @@ const commands = [
 
     new SlashCommandBuilder()
     .setName('audit')
-    .setDescription('Perform a server wide security scan for roles')
+    .setDescription('Perform a server wide security scan for roles'),
+
+    new SlashCommandBuilder()
+    .setName(`flags`)
+    .setDescription(`View flagged users`)
 ]
 .map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken(process.env.DISCORDAPP_TOKEN);
+const rest = new REST({ version: '10' }).setToken('MTQ4MTkyOTA4MDcxNzk3MTY2OA.GjpxJe.wjvk0mzErpyjYDMa-oeZtE4wAMQyF11Ez-EfnY');
 
 (async () => {
     try {
