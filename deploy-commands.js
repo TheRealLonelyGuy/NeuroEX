@@ -12,7 +12,7 @@ const commands = [
 ]
 .map(command => command.toJSON());
 
-const rest = new REST({ version: '10' }).setToken('MTQ4MTkyOTA4MDcxNzk3MTY2OA.GjpxJe.wjvk0mzErpyjYDMa-oeZtE4wAMQyF11Ez-EfnY');
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORDAPP_TOKEN);
 
 (async () => {
     try {
