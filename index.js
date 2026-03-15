@@ -22,7 +22,7 @@ setInterval(async () => {
     }
 }, 4 * 60 * 1000); // 4 minutes
 
-const {Client, GatewayIntentBits} = require('discord.js');
+const {Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField} = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -42,124 +42,33 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return; // only handle slash commands
 
     try {
-        if (interaction.commandName === 'register-plate') {
-            const plate = interaction.options.getString('plate');
-            const owner = interaction.options.getString('player');
+        if (interaction.commandName === 'audit') {
+            const guild = interaction.guild;
 
-            const fs = require('fs');
-            let plates = {};
-            
-            if (fs.existsSync('plates.json'))
-                plates = JSON.parse(fs.readFileSync('plates.json'));
-            plates[plate] = { owner: owner };
-            fs.writeFileSync('plates.json', JSON.stringify(plates, null, 2));
+            const roles = guild.roles.cache;
 
-            await interaction.reply({
-                content: `✅ Successfully registered a plate to ${plate}, the registered owner is ${owner}`,
-                ephemeral: true
-            })
-        }
+            let warnings = [];
+            let score = 100;
 
-        else if (interaction.commandName === 'register-player') {
-            const name = interaction.options.getString('name')
-            const dob = interaction.options.getString('dob') // dob = Date of Birth
-            const residence = interaction.options.getString('residence')
-            const occ = interaction.options.getString('occ') // occ = Occupation
-
-            const fs = require('fs');
-            let players = {};
-
-            if (fs.existsSync('players.json')) {
-                players = JSON.parse(fs.readFileSync('players.json'));
-            }
-            
-            players[name] = {
-                dob: dob,
-                residence: residence,
-                occupation: occ
-            };
-
-            fs.writeFileSync('players.json', JSON.stringify(players, null, 2));
-
-            await interaction.reply({
-                content: `✅ Successfully registered your player **${name}**`,
-                ephemeral: true
-            })
-            
-        }
-
-        else if (interaction.commandName === 'search-plate') {
-            const fs = require('fs');
-            const plate = interaction.options.getString('plate')
-            
-            let plates = {};
-            if (fs.existsSync('plates.json')) {
-                plates = JSON.parse(fs.readFileSync('plates.json'));
-            }
-
-            if (plates[plate]) {
-                await interaction.reply({
-                    content: `Plate **${plate}** is registered to **${plates[plate].owner}**`,
-                ephemeral: true    
-                });
-            } else {
-                await interaction.reply({
-                    content: `Plate **${plate}** is not a registered plate`,
-                    ephemeral: true
-                });
-            }
-        }
-
-        else if (interaction.commandName === 'list-plates') {
-            const fs = require('fs');
-            let plates = {};
-
-            if (fs.existsSync('plates.json')) {
-                plates = JSON.parse(fs.readFileSync('plates.json'));
-            }
-
-            if (Object.keys(plates).length === 0) {
-                await interaction.reply({
-                    content: `❌ There are no registered playes yet.`,
-                    ephemeral: true
-                });
-                return;
-            }
-
-            const plateList = Object.entries(plates)
-            .map(([plate, data]) => `**${plate}** -> ${data.owner}`)
-            .join('\n');
-
-            await interaction.reply({
-                content: `**Registered Plates:**\n${plateList}`,
-                ephemeral: true
+            roles.forEach(role => {
+                if(role.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                    warnings.push(`⚠️ Role **${role.name}** can manage roles!`);
+                    score -= 15;
+                }
             });
-        }
 
-        else if (interaction.commandName === 'delete-plate') {
-            const fs = require('fs');
-            const plate = interaction.options.getString('plate');
+            if (score < 0) score = 0;
 
-            let plates = {};
-            if (fs.existsSync(`plates.json`)) {
-                plates = JSON.parse(fs.readFileSync(`plates.json`));
-            }
+            const embed = new EmbedBuilder()
+            .setTitle('Server Security Audit')
+            .setColor(score > 70 ? 'Green' : score > 40 ? 'Yellow' : 'Red')
+            .addFields(
+                {name: 'Security Score', value: `${score}/100`},
+                {name: 'Warnings', value: warnings.length ? warnings.join('\n') : '✅ No issues detected'} 
+            )
+            .setTimestamp();
 
-            if (!plates[plate]) {
-                await interaction.reply({
-                    content: `Plate **${plate}** does not exist, check list-plates for valid plates`,
-                    ephemeral: true
-                });
-                return;
-            }
-
-            delete plates[plate];
-            fs.writeFileSync('plates.json', JSON.stringify(plates, null, 2));
-
-            await interaction.reply({
-                content: `Plate **${plate}** has been permanently deleted.`,
-                ephemeral: true
-            });
+            await interaction.reply({ embeds: [embed] });
         }
 
     } catch (error) {
