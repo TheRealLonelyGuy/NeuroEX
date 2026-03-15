@@ -74,7 +74,7 @@ client.on('interactionCreate', async interaction => {
     } catch (error) {
         console.error(error);
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: 'We have detected an error when running the command, please try again or contact support', ephemeral: true });
+            await interaction.deferReply({ content: 'We have detected an error when running the command, please try again or contact support', ephemeral: true });
         }
     }
 });
