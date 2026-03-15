@@ -68,7 +68,7 @@ client.on('interactionCreate', async interaction => {
             )
             .setTimestamp();
 
-            await interaction.reply({ embeds: [embed] });
+            await interaction.deferReply({ embeds: [embed] });
         }
 
     } catch (error) {

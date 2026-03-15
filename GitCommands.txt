@@ -1,0 +1,28 @@
+git add .
+
+git status
+
+git commit -m "Initial commit"
+
+git push -u origin main
+
+git push origin main
+
+Updating Changes
+
+git add .
+git commit -m "string"
+git push
+
+Remove Files
+
+git rm filename.js
+git commit -m "string"
+git push
+
+Ignore Files (In File Storage)
+
+node_modules/
+
+*.log
+.env
