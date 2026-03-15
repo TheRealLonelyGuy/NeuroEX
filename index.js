@@ -48,13 +48,45 @@ client.on('interactionCreate', async interaction => {
             const guild = interaction.guild;
             const roles = guild.roles.cache;
 
-            let warnings = [];
+            let moderateWarnings = [];
+            let highWarnings = [];
+            let criticalWarnings = [];
             let score = 100;
 
             roles.forEach(role => {
                 if(role.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                    warnings.push(`⚠️ Role **${role.name}** has Administrator permissions!`);
+                    criticalWarnings.push(`🚨 Role **${role.name}** has Administrator permissions!`);
+                    score -= 20;
+                }
+
+                if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+                    highWarnings.push(`⚠️ Role **${role.name}** can manage roles!`)
                     score -= 15;
+                }
+
+                if (role.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+                    highWarnings.push(`⚠️ Role **${role.name}** can ban members!`)
+                    score -= 10;
+                }
+
+                if (role.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+                    moderateWarnings.push(`⚠️ Role **${role.name}** can kick members!`)
+                    score -= 10;
+                }
+
+                 if (role.permissions.has(PermissionsBitField.Flags.MentionEveryone)) {
+                    moderateWarnings.push(`⚠️ Role **${role.name}** can ping @everyone!`)
+                    score -= 5;
+                }
+
+                 if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+                    moderateWarnings.push(`⚠️ Role **${role.name}** can manage messages!`)
+                    score -= 10;
+                }
+
+                if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+                    highWarnings.push(`⚠️ Role **${role.name}** can manage channels!`)
+                    score -= 10;
                 }
             });
 
@@ -65,9 +97,23 @@ client.on('interactionCreate', async interaction => {
             .setColor(score > 70 ? 'Green' : score > 40 ? 'Yellow' : 'Red')
             .addFields(
                 {name: 'Security Score', value: `${score}/100`},
-                {name: 'Warnings', value: warnings.length ? warnings.join('\n') : '✅ No issues detected'}
+                {
+                    name: `🚨 Critical Risks`,
+                    value: criticalWarnings.length ? criticalWarnings.join(`\n`) : `None Detected`
+                },
+
+                {
+                    name: `⚠️ High Risks`,
+                    value: highWarnings.length ? highWarnings.join(`\n`) : `None Detected`
+                },
+
+                {
+                    name: `⚠️ Moderate Risks`,
+                    value: moderateWarnings.length ? moderateWarnings.join(`\n`) : `None Detected`
+                }
             )
-            .setTimestamp();
+            .setTimestamp()
+            .setFooter({ text: 'NeuroEX Corporation • ${guild.name}' });
 
             await interaction.followUp({ embeds: [embed] });
         }
