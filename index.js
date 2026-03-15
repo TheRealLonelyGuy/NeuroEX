@@ -43,8 +43,9 @@ client.on('interactionCreate', async interaction => {
 
     try {
         if (interaction.commandName === 'audit') {
+            await interaction.deferReply();
+            
             const guild = interaction.guild;
-
             const roles = guild.roles.cache;
 
             let warnings = [];
@@ -68,13 +69,13 @@ client.on('interactionCreate', async interaction => {
             )
             .setTimestamp();
 
-            await interaction.deferReply({ embeds: [embed] });
+            await interaction.followUp({ embeds: [embed] });
         }
 
     } catch (error) {
         console.error(error);
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.deferReply({ content: 'We have detected an error when running the command, please try again or contact support', ephemeral: true });
+            await interaction.reply({ content: 'We have detected an error when running the command, please try again or contact support', ephemeral: true });
         }
     }
 });
