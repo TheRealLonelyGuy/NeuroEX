@@ -10,3 +10,5 @@ node_modules/
 .env
 node_modules/
 *.log
+
+DISCORDAPP_TOKEN=MTQ4MTkyOTA4MDcxNzk3MTY2OA.GToLcb.zBCVDLg-2SM8prRHyZj4CrMjjB1VyVC8qHwBl4
