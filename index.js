@@ -1,67 +1,3 @@
-require('dotenv').config();
-const fs = require("fs");
-const {
-  Client,
-  GatewayIntentBits,
-  EmbedBuilder,
-  PermissionsBitField,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  ChannelSelectMenuBuilder,
-  ButtonBuilder,
-  ButtonStyle
-} = require('discord.js');
-const fetch = require('node-fetch');
-const http = require('http');
-
-// ----------------------------
-// Keep bot awake
-const SELF_URL = "https://neuroex.onrender.com";
-http.createServer((req, res) => res.end("NeuroEX bot running")).listen(process.env.PORT || 1000);
-setInterval(async () => {
-  try { await fetch(SELF_URL); console.log("Self ping successful"); } 
-  catch { console.log("Self ping failed"); }
-}, 4 * 60 * 1000);
-
-// ----------------------------
-// Storage
-const flaggedUsers = {};
-let serverConfig = fs.existsSync("./config.json") ? JSON.parse(fs.readFileSync("./config.json", "utf8")) : {};
-function saveConfig() { fs.writeFileSync("./config.json", JSON.stringify(serverConfig, null, 2)); }
-
-// ----------------------------
-// Discord Client
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
-  ]
-});
-
-client.once("ready", () => console.log(`Bot online as ${client.user.tag}`));
-
-// ----------------------------
-// Link detection
-client.on("messageCreate", async message => {
-  if (message.author.bot) return;
-  if (!/https?:\/\/[^\s]+/i.test(message.content)) return;
-
-  const userId = message.author.id;
-  flaggedUsers[userId] = (flaggedUsers[userId] || 0) + 1;
-  console.log(`${message.author.tag} sent a link. Flags: ${flaggedUsers[userId]}`);
-
-  if (flaggedUsers[userId] === 10) {
-    try {
-      const owner = await message.guild.fetchOwner();
-      await owner.send(`🚨 Suspicious activity detected!\nUser <@${userId}> has sent 10 links.\nCurrent total: ${flaggedUsers[userId]}`);
-    } catch (err) { console.error("Failed to notify server owner:", err); }
-  }
-});
-
-// ----------------------------
-// Interactions
 client.on("interactionCreate", async interaction => {
   try {
     const guildId = interaction.guild?.id;
@@ -70,15 +6,18 @@ client.on("interactionCreate", async interaction => {
     // ----------------------------
     // Slash Commands
     if (interaction.isChatInputCommand()) {
-      const slowCommands = ["audit","kick","ban"];
-      if (slowCommands.includes(interaction.commandName)) await interaction.deferReply({ ephemeral: true });
+      const slowCommands = ["audit", "kick", "ban"];
+      const isSlow = slowCommands.includes(interaction.commandName);
 
-      // Block commands before setup
-      if (interaction.commandName !== "setup" && (!serverConfig[guildId] || !serverConfig[guildId].setupComplete)) {
-        return interaction.reply({ content: "⚠️ This server has not completed setup yet. Please run /setup first.", ephemeral: true });
-      }
+      // Only defer slow commands
+      if (isSlow) await interaction.deferReply({ ephemeral: true });
 
       const config = serverConfig[guildId];
+
+      // Block commands before setup
+      if (interaction.commandName !== "setup" && (!config || !config.setupComplete)) {
+        return interaction.reply({ content: "⚠️ This server has not completed setup yet. Please run /setup first.", ephemeral: true });
+      }
 
       // Role permission check
       if (config?.accessRoles?.length && !interaction.member.roles.cache.some(r => config.accessRoles.includes(r.id))) {
@@ -125,6 +64,13 @@ client.on("interactionCreate", async interaction => {
       }
 
       // ----------------------------
+      // /flags
+      if (interaction.commandName === "flags") {
+        let output = Object.entries(flaggedUsers).map(([id, count]) => `<@${id}> — ${count}`).join("\n") || "No users currently flagged.";
+        return interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
+      }
+
+      // ----------------------------
       // /audit
       if (interaction.commandName === "audit") {
         const roles = interaction.guild.roles.cache;
@@ -158,18 +104,8 @@ client.on("interactionCreate", async interaction => {
       }
 
       // ----------------------------
-      // /flags
-      if (interaction.commandName === "flags") {
-        let output = Object.entries(flaggedUsers).map(([id,count]) => `<@${id}> — ${count}`).join("\n");
-        if (!output) output = "No users currently flagged.";
-        return slowCommands.includes(interaction.commandName)
-          ? interaction.editReply({ content: `🚩 Flagged Users\n\n${output}` })
-          : interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
-      }
-
-      // ----------------------------
       // /kick & /ban
-      if (["kick","ban"].includes(interaction.commandName)) {
+      if (["kick", "ban"].includes(interaction.commandName)) {
         const member = interaction.options.getMember("target");
         const reason = interaction.options.getString("reason") || "No reason";
         const perm = interaction.commandName === "kick" ? "KickMembers" : "BanMembers";
@@ -198,46 +134,43 @@ client.on("interactionCreate", async interaction => {
     // Buttons / Select Menus
     if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isChannelSelectMenu()) {
       await interaction.deferUpdate();
-      if (!serverConfig[guildId]) serverConfig[guildId] = { setupComplete:false, accessRoles:[], logsChannel:null };
+      if (!serverConfig[guildId]) serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
 
-      if (interaction.customId === "setup_roles") {
-        serverConfig[guildId].accessRoles = interaction.values;
-        saveConfig();
-        return interaction.followUp({ content:"✅ Access roles saved.", ephemeral:true });
-      }
+      switch (interaction.customId) {
+        case "setup_roles":
+          serverConfig[guildId].accessRoles = interaction.values;
+          saveConfig();
+          return interaction.followUp({ content: "✅ Access roles saved.", ephemeral: true });
 
-      if (interaction.customId === "setup_logs") {
-        serverConfig[guildId].logsChannel = interaction.values[0];
-        saveConfig();
-        return interaction.followUp({ content:"✅ Logs channel saved.", ephemeral:true });
-      }
+        case "setup_logs":
+          serverConfig[guildId].logsChannel = interaction.values[0];
+          saveConfig();
+          return interaction.followUp({ content: "✅ Logs channel saved.", ephemeral: true });
 
-      if (interaction.customId === "setup_finish") {
-        serverConfig[guildId].setupComplete = true;
-        saveConfig();
-        return interaction.editReply({ content:"✅ Setup complete!", embeds:[], components:[] });
-      }
+        case "setup_finish":
+          serverConfig[guildId].setupComplete = true;
+          saveConfig();
+          return interaction.editReply({ content: "✅ Setup complete!", embeds: [], components: [] });
 
-      if (interaction.customId === "setup_cancel") {
-        serverConfig[guildId] = { setupComplete:false, accessRoles:[], logsChannel:null };
-        saveConfig();
-        return interaction.editReply({ content:"❌ Setup cancelled", embeds:[], components:[] });
+        case "setup_cancel":
+          serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
+          saveConfig();
+          return interaction.editReply({ content: "❌ Setup cancelled", embeds: [], components: [] });
       }
     }
+
   } catch (error) {
     console.error(error);
     try {
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: "❌ An error occurred.", ephemeral:true });
+        await interaction.reply({ content: "❌ An error occurred.", ephemeral: true });
       } else if (interaction.deferred) {
-        await interaction.editReply({ content:"❌ An error occurred." });
-      } else if (interaction.replied) {
-        await interaction.followUp({ content:"❌ An error occurred.", ephemeral:true });
+        await interaction.editReply({ content: "❌ An error occurred." });
+      } else {
+        await interaction.followUp({ content: "❌ An error occurred.", ephemeral: true });
       }
-    } catch(err) {
+    } catch (err) {
       console.error("Failed to send error message:", err);
     }
   }
 });
-
-client.login(process.env.DISCORDAPP_TOKEN);
