@@ -95,37 +95,34 @@ client.on("interactionCreate", async interaction => {
     if (!guildId) return;
 
     // ----------------------------
-    // Handle slash commands
+    // Slash Commands
     if (interaction.isChatInputCommand()) {
 
-      // ----------------------------
+      // Defer reply to prevent timeout
+      await interaction.deferReply({ ephemeral: true });
+
       // Block commands before setup
       if (interaction.commandName !== "setup" &&
           (!serverConfig[guildId] || !serverConfig[guildId].setupComplete)) {
-        return interaction.reply({
-          content: "⚠️ This server has not completed setup yet. Please run /setup first.",
-          ephemeral: true
+        return interaction.editReply({
+          content: "⚠️ This server has not completed setup yet. Please run /setup first."
         });
       }
 
       const config = serverConfig[guildId];
 
-      // ----------------------------
       // Permission check based on roles
       if (config && config.accessRoles?.length > 0) {
         const hasRole = interaction.member.roles.cache.some(role =>
           config.accessRoles.includes(role.id)
         );
         if (!hasRole) {
-          return interaction.reply({
-            content: "❌ You don't have permission to use this command.",
-            ephemeral: true
-          });
+          return interaction.editReply({ content: "❌ You don't have permission to use this command." });
         }
       }
 
       // ----------------------------
-      // /audit command
+      // /audit
       if (interaction.commandName === "audit") {
         const roles = interaction.guild.roles.cache;
         let score = 100;
@@ -157,31 +154,31 @@ client.on("interactionCreate", async interaction => {
           .setTimestamp()
           .setFooter({ text: `NeuroEX Corporation • ${interaction.guild.name}` });
 
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // ----------------------------
-      // /flags command
+      // /flags
       if (interaction.commandName === "flags") {
         let output = Object.entries(flaggedUsers)
           .map(([id, count]) => `<@${id}> — ${count}`)
           .join("\n");
         if (!output) output = "No users currently flagged.";
-        return interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
+        return interaction.editReply({ content: `🚩 Flagged Users\n\n${output}` });
       }
 
       // ----------------------------
-      // /kick command
+      // /kick
       if (interaction.commandName === "kick") {
         const member = interaction.options.getMember("target");
         const reason = interaction.options.getString("reason") || "No reason";
 
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers))
-          return interaction.reply({ content: "❌ You do not have permission to kick.", ephemeral: true });
+          return interaction.editReply({ content: "❌ You do not have permission to kick." });
         if (!member)
-          return interaction.reply({ content: "❌ Member not found.", ephemeral: true });
+          return interaction.editReply({ content: "❌ Member not found." });
         if (member.roles.highest.position >= interaction.member.roles.highest.position)
-          return interaction.reply({ content: "❌ Cannot kick a member with equal or higher role.", ephemeral: true });
+          return interaction.editReply({ content: "❌ Cannot kick a member with equal or higher role." });
 
         await member.kick(reason);
 
@@ -190,21 +187,21 @@ client.on("interactionCreate", async interaction => {
           if (logChannel) logChannel.send(`🦵 **${member.user.tag}** was kicked by **${interaction.user.tag}** | Reason: ${reason}`);
         }
 
-        return interaction.reply(`✅ Kicked **${member.user.tag}**`);
+        return interaction.editReply(`✅ Kicked **${member.user.tag}**`);
       }
 
       // ----------------------------
-      // /ban command
+      // /ban
       if (interaction.commandName === "ban") {
         const member = interaction.options.getMember("target");
         const reason = interaction.options.getString("reason") || "No reason";
 
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers))
-          return interaction.reply({ content: "❌ You do not have permission to ban.", ephemeral: true });
+          return interaction.editReply({ content: "❌ You do not have permission to ban." });
         if (!member)
-          return interaction.reply({ content: "❌ Member not found.", ephemeral: true });
+          return interaction.editReply({ content: "❌ Member not found." });
         if (member.roles.highest.position >= interaction.member.roles.highest.position)
-          return interaction.reply({ content: "❌ Cannot ban a member with equal or higher role.", ephemeral: true });
+          return interaction.editReply({ content: "❌ Cannot ban a member with equal or higher role." });
 
         await member.ban({ reason });
 
@@ -213,11 +210,11 @@ client.on("interactionCreate", async interaction => {
           if (logChannel) logChannel.send(`🔨 **${member.user.tag}** was banned by **${interaction.user.tag}** | Reason: ${reason}`);
         }
 
-        return interaction.reply(`🔨 Banned **${member.user.tag}**`);
+        return interaction.editReply(`🔨 Banned **${member.user.tag}**`);
       }
 
       // ----------------------------
-      // /setup command
+      // /setup
       if (interaction.commandName === "setup") {
         const embed = new EmbedBuilder()
           .setTitle("NeuroEX Setup")
@@ -244,47 +241,47 @@ client.on("interactionCreate", async interaction => {
           new ButtonBuilder().setCustomId("setup_cancel").setLabel("Cancel").setStyle(ButtonStyle.Danger)
         );
 
-        return interaction.reply({
+        return interaction.editReply({
           embeds: [embed],
           components: [
             new ActionRowBuilder().addComponents(roleMenu),
             new ActionRowBuilder().addComponents(channelMenu),
             buttonRow
-          ],
-          ephemeral: true
+          ]
         });
       }
     }
 
     // ----------------------------
-    // Menu/Button interactions
+    // Button / Select Menu Interactions
     if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isChannelSelectMenu()) {
-      if (!serverConfig[guildId]) {
-        serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
-      }
+      // deferUpdate prevents timeout
+      await interaction.deferUpdate();
+
+      if (!serverConfig[guildId]) serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
 
       if (interaction.customId === "setup_roles") {
         serverConfig[guildId].accessRoles = interaction.values;
         saveConfig();
-        return interaction.reply({ content: "✅ Access roles saved.", ephemeral: true });
+        return interaction.followUp({ content: "✅ Access roles saved.", ephemeral: true });
       }
 
       if (interaction.customId === "setup_logs") {
         serverConfig[guildId].logsChannel = interaction.values[0];
         saveConfig();
-        return interaction.reply({ content: "✅ Logs channel saved.", ephemeral: true });
+        return interaction.followUp({ content: "✅ Logs channel saved.", ephemeral: true });
       }
 
       if (interaction.customId === "setup_finish") {
         serverConfig[guildId].setupComplete = true;
         saveConfig();
-        return interaction.update({ content: "✅ Setup complete!", embeds: [], components: [] });
+        return interaction.editReply({ content: "✅ Setup complete!", embeds: [], components: [] });
       }
 
       if (interaction.customId === "setup_cancel") {
         serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
         saveConfig();
-        return interaction.update({ content: "❌ Setup cancelled", embeds: [], components: [] });
+        return interaction.editReply({ content: "❌ Setup cancelled", embeds: [], components: [] });
       }
     }
 
