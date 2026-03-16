@@ -17,7 +17,6 @@ const http = require('http');
 // ----------------------------
 // Keep bot awake
 const SELF_URL = "https://neuroex.onrender.com";
-
 http.createServer((req, res) => res.end("NeuroEX bot running")).listen(process.env.PORT || 1000);
 
 setInterval(async () => {
@@ -29,7 +28,6 @@ setInterval(async () => {
 // Storage
 const flaggedUsers = {};
 let serverConfig = fs.existsSync("./config.json") ? JSON.parse(fs.readFileSync("./config.json", "utf8")) : {};
-
 function saveConfig() { fs.writeFileSync("./config.json", JSON.stringify(serverConfig, null, 2)); }
 
 // ----------------------------
@@ -49,8 +47,7 @@ client.once("ready", () => console.log(`Bot online as ${client.user.tag}`));
 // Link detection
 client.on("messageCreate", async message => {
   if (message.author.bot) return;
-  const urlPattern = /https?:\/\/[^\s]+/i;
-  if (!urlPattern.test(message.content)) return;
+  if (!/https?:\/\/[^\s]+/i.test(message.content)) return;
 
   const userId = message.author.id;
   flaggedUsers[userId] = (flaggedUsers[userId] || 0) + 1;
@@ -74,9 +71,7 @@ client.on("interactionCreate", async interaction => {
     // ----------------------------
     // Slash Commands
     if (interaction.isChatInputCommand()) {
-
-      // Defer reply only if processing may take >3s
-      const slowCommands = ["audit", "kick", "ban"];
+      const slowCommands = ["audit","kick","ban"];
       if (slowCommands.includes(interaction.commandName)) await interaction.deferReply({ ephemeral: true });
 
       // Block commands before setup
@@ -87,7 +82,7 @@ client.on("interactionCreate", async interaction => {
       const config = serverConfig[guildId];
 
       // Role permission check
-      if (config?.accessRoles?.length > 0 && !interaction.member.roles.cache.some(role => config.accessRoles.includes(role.id))) {
+      if (config?.accessRoles?.length && !interaction.member.roles.cache.some(r => config.accessRoles.includes(r.id))) {
         return interaction.reply({ content: "❌ You don't have permission to use this command.", ephemeral: true });
       }
 
@@ -145,6 +140,7 @@ client.on("interactionCreate", async interaction => {
           if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) { moderate.push(`Role **${role.name}** can manage messages!`); score -= 10; }
           if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) { high.push(`Role **${role.name}** can manage channels!`); score -= 10; }
         });
+
         if (score < 0) score = 0;
 
         const embed = new EmbedBuilder()
@@ -165,11 +161,10 @@ client.on("interactionCreate", async interaction => {
       // ----------------------------
       // /flags
       if (interaction.commandName === "flags") {
-        let output = Object.entries(flaggedUsers).map(([id, count]) => `<@${id}> — ${count}`).join("\n");
+        let output = Object.entries(flaggedUsers).map(([id,count]) => `<@${id}> — ${count}`).join("\n");
         if (!output) output = "No users currently flagged.";
-        return slowCommands.includes(interaction.commandName)
-          ? interaction.editReply({ content: `🚩 Flagged Users\n\n${output}` })
-          : interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
+        if (slowCommands.includes(interaction.commandName)) return interaction.editReply({ content: `🚩 Flagged Users\n\n${output}` });
+        return interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
       }
 
       // ----------------------------
@@ -203,37 +198,39 @@ client.on("interactionCreate", async interaction => {
     // Buttons / Select Menus
     if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isChannelSelectMenu()) {
       await interaction.deferUpdate();
-
-      if (!serverConfig[guildId]) serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
+      if (!serverConfig[guildId]) serverConfig[guildId] = { setupComplete:false, accessRoles:[], logsChannel:null };
 
       if (interaction.customId === "setup_roles") {
         serverConfig[guildId].accessRoles = interaction.values;
         saveConfig();
-        return interaction.followUp({ content: "✅ Access roles saved.", ephemeral: true });
+        return interaction.followUp({ content:"✅ Access roles saved.", ephemeral:true });
       }
 
       if (interaction.customId === "setup_logs") {
         serverConfig[guildId].logsChannel = interaction.values[0];
         saveConfig();
-        return interaction.followUp({ content: "✅ Logs channel saved.", ephemeral: true });
+        return interaction.followUp({ content:"✅ Logs channel saved.", ephemeral:true });
       }
 
       if (interaction.customId === "setup_finish") {
         serverConfig[guildId].setupComplete = true;
         saveConfig();
-        return interaction.editReply({ content: "✅ Setup complete!", embeds: [], components: [] });
+        return interaction.editReply({ content:"✅ Setup complete!", embeds:[], components:[] });
       }
 
       if (interaction.customId === "setup_cancel") {
-        serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
+        serverConfig[guildId] = { setupComplete:false, accessRoles:[], logsChannel:null };
         saveConfig();
-        return interaction.editReply({ content: "❌ Setup cancelled", embeds: [], components: [] });
+        return interaction.editReply({ content:"❌ Setup cancelled", embeds:[], components:[] });
       }
     }
-
   } catch (error) {
     console.error(error);
-    if (!interaction.replied) await interaction.reply({ content: "❌ An error occurred.", ephemeral: true });
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: "❌ An error occurred.", ephemeral:true });
+    } else if (interaction.deferred) {
+      await interaction.editReply({ content:"❌ An error occurred." });
+    }
   }
 });
 
