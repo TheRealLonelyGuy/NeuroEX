@@ -18,7 +18,6 @@ const http = require('http');
 // Keep bot awake
 const SELF_URL = "https://neuroex.onrender.com";
 http.createServer((req, res) => res.end("NeuroEX bot running")).listen(process.env.PORT || 1000);
-
 setInterval(async () => {
   try { await fetch(SELF_URL); console.log("Self ping successful"); } 
   catch { console.log("Self ping failed"); }
@@ -163,8 +162,9 @@ client.on("interactionCreate", async interaction => {
       if (interaction.commandName === "flags") {
         let output = Object.entries(flaggedUsers).map(([id,count]) => `<@${id}> — ${count}`).join("\n");
         if (!output) output = "No users currently flagged.";
-        if (slowCommands.includes(interaction.commandName)) return interaction.editReply({ content: `🚩 Flagged Users\n\n${output}` });
-        return interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
+        return slowCommands.includes(interaction.commandName)
+          ? interaction.editReply({ content: `🚩 Flagged Users\n\n${output}` })
+          : interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
       }
 
       // ----------------------------
@@ -226,10 +226,16 @@ client.on("interactionCreate", async interaction => {
     }
   } catch (error) {
     console.error(error);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: "❌ An error occurred.", ephemeral:true });
-    } else if (interaction.deferred) {
-      await interaction.editReply({ content:"❌ An error occurred." });
+    try {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: "❌ An error occurred.", ephemeral:true });
+      } else if (interaction.deferred) {
+        await interaction.editReply({ content:"❌ An error occurred." });
+      } else if (interaction.replied) {
+        await interaction.followUp({ content:"❌ An error occurred.", ephemeral:true });
+      }
+    } catch(err) {
+      console.error("Failed to send error message:", err);
     }
   }
 });
