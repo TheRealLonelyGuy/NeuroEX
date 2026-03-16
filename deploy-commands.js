@@ -9,7 +9,42 @@ const commands = [
 
     new SlashCommandBuilder()
     .setName(`flags`)
-    .setDescription(`View flagged users`)
+    .setDescription(`View flagged users`),
+
+    new SlashCommandBuilder()
+    .setName(`kick`)
+    .setDescription(`Kick a member from the server`)
+    .addUserOption(option =>
+        option.setName(`target`)
+        .setDescription(`The member to kick`)
+        .setRequired(true)
+    )
+    
+    .addStringOption(option =>
+        option.setName(`reason`)
+        .setDescription(`Reason for the kick`)
+        .setRequired(false)
+    ),
+
+   new SlashCommandBuilder()
+   .setName(`ban`)
+   .setDescription(`Ban a member from the server`)
+   .addUserOption(option =>
+    option.setName(`target`)
+    .setDescription(`The member to ban`)
+    .setRequired(true)
+   
+    )
+
+   .addStringOption(option =>
+    option.setName(`reason`)
+    .setDescription(`Reason for the ban`)
+    .setRequired(true)
+   ),
+
+   new SlashCommandBuilder()
+   .setName("setup")
+   .setDescription("Configure the NeuroEX bot for this server")
 ]
 .map(command => command.toJSON());
 

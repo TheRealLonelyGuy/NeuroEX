@@ -1,51 +1,71 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const fs = require("fs");
+const {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  PermissionsBitField,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require('discord.js');
 const fetch = require('node-fetch');
 const http = require('http');
 
 // ----------------------------
-// Keep bot awake
+// Keep bot awake (Render)
 // ----------------------------
-const SELF_URL = 'https://neuroex.onrender.com'; // Replace with your URL
+const SELF_URL = "https://neuroex.onrender.com";
+
 http.createServer((req, res) => {
-  res.end('NeuroEX bot is running!');
-}).listen(process.env.PORT || 1000, () => {
-  console.log(`HTTP server running on port ${process.env.PORT || 1000}`);
-});
+  res.end("NeuroEX bot running");
+}).listen(process.env.PORT || 1000);
 
 setInterval(async () => {
   try {
     await fetch(SELF_URL);
-    console.log('✅ Self-ping successful! Bot stays awake.');
-  } catch (err) {
-    console.error('❌ Self-ping failed:', err);
+    console.log("Self ping successful");
+  } catch {
+    console.log("Self ping failed");
   }
 }, 4 * 60 * 1000);
 
 // ----------------------------
-// Global storage for flagged users
+// Storage
 // ----------------------------
 const flaggedUsers = {};
+let serverConfig = {};
+
+if (fs.existsSync("./config.json")) {
+  serverConfig = JSON.parse(fs.readFileSync("./config.json", "utf8"));
+}
+
+function saveConfig() {
+  fs.writeFileSync("./config.json", JSON.stringify(serverConfig, null, 2));
+}
 
 // ----------------------------
-// Discord bot setup
+// Discord Client
 // ----------------------------
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers
   ]
 });
 
-client.once('ready', () => {
-  console.log(`Bot is online as ${client.user.tag}`);
+client.once("ready", () => {
+  console.log(`Bot online as ${client.user.tag}`);
 });
 
 // ----------------------------
-// Automatic link detection
+// Link detection
 // ----------------------------
-client.on('messageCreate', async message => {
+client.on("messageCreate", async message => {
   if (message.author.bot) return;
 
   const urlPattern = /https?:\/\/[^\s]+/i;
@@ -56,105 +76,279 @@ client.on('messageCreate', async message => {
   if (!flaggedUsers[userId]) flaggedUsers[userId] = 0;
   flaggedUsers[userId]++;
 
-  console.log(`${message.author.tag} sent a link. Total flags: ${flaggedUsers[userId]}`);
+  console.log(`${message.author.tag} sent a link. Flags: ${flaggedUsers[userId]}`);
 
-  // Alert once at 10, but keep counting
   if (flaggedUsers[userId] === 10) {
     try {
       const owner = await message.guild.fetchOwner();
       await owner.send(
-        `🚨 Suspicious behavior detected!\n` +
+        `🚨 Suspicious activity detected!\n` +
         `User <@${userId}> has sent 10 links in the server.\n` +
         `Current total: ${flaggedUsers[userId]}`
       );
     } catch (err) {
-      console.error('Failed to notify server owner:', err);
+      console.error("Failed to notify server owner:", err);
     }
   }
 });
 
 // ----------------------------
-// Slash commands
+// Slash commands & interactions
 // ----------------------------
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
+client.on("interactionCreate", async interaction => {
   try {
-    // ------------------------
-    // /audit command
-    // ------------------------
-    if (interaction.commandName === 'audit') {
-      await interaction.deferReply({ ephemeral: true });
+    const guildId = interaction.guild?.id;
+    if (!guildId) return;
 
-      const guild = interaction.guild;
-      const roles = guild.roles.cache;
+    // ----------------------------
+    // Handle slash commands
+    // ----------------------------
+    if (interaction.isChatInputCommand()) {
 
-      let moderateWarnings = [];
-      let highWarnings = [];
-      let criticalWarnings = [];
-      let score = 100;
+      // ----------------------------
+      // Block commands before setup
+      // ----------------------------
+      if (interaction.commandName !== "setup" &&
+          (!serverConfig[guildId] || !serverConfig[guildId].setupComplete)) {
+        return interaction.reply({
+          content: "⚠️ This server has not completed setup yet. Please run /setup first.",
+          ephemeral: true
+        });
+      }
 
-      roles.forEach(role => {
-        if (role.permissions.has(PermissionsBitField.Flags.Administrator)) {
-          criticalWarnings.push(`Role **${role.name}** has Administrator permissions!`);
-          score -= 20;
-        } else if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-          highWarnings.push(`Role **${role.name}** can manage roles!`);
-          score -= 15;
-        } else if (role.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-          highWarnings.push(`Role **${role.name}** can ban members!`);
-          score -= 10;
-        } else if (role.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-          moderateWarnings.push(`Role **${role.name}** can kick members!`);
-          score -= 10;
-        } else if (role.permissions.has(PermissionsBitField.Flags.MentionEveryone)) {
-          moderateWarnings.push(`Role **${role.name}** can ping @everyone!`);
-          score -= 5;
-        } else if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-          moderateWarnings.push(`Role **${role.name}** can manage messages!`);
-          score -= 10;
-        } else if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
-          highWarnings.push(`Role **${role.name}** can manage channels!`);
-          score -= 10;
+      const config = serverConfig[guildId];
+
+      // ----------------------------
+      // Permission check based on roles
+      // ----------------------------
+      if (config && config.accessRoles?.length > 0) {
+        const hasRole = interaction.member.roles.cache.some(role =>
+          config.accessRoles.includes(role.id)
+        );
+        if (!hasRole) {
+          return interaction.reply({
+            content: "❌ You don't have permission to use this command.",
+            ephemeral: true
+          });
         }
-      });
+      }
 
-      if (score < 0) score = 0;
+      // ----------------------------
+      // /audit command
+      // ----------------------------
+      if (interaction.commandName === "audit") {
+        const roles = interaction.guild.roles.cache;
+        let score = 100;
+        let critical = [];
+        let high = [];
+        let moderate = [];
 
-      const embed = new EmbedBuilder()
-        .setTitle('Server Security Audit')
-        .setColor(score > 70 ? 'Green' : score > 40 ? 'Yellow' : 'Red')
-        .addFields(
-          { name: 'Security Score', value: `${score}/100` },
-          { name: '🚨 Critical Risks', value: criticalWarnings.length ? criticalWarnings.join('\n') : 'None Detected' },
-          { name: '⚠️ High Risks', value: highWarnings.length ? highWarnings.join('\n') : 'None Detected' },
-          { name: '⚠️ Moderate Risks', value: moderateWarnings.length ? moderateWarnings.join('\n') : 'None Detected' }
-        )
-        .setTimestamp()
-        .setFooter({ text: `NeuroEX Corporation • ${guild.name}` });
+        roles.forEach(role => {
+          if (role.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            critical.push(`Role **${role.name}** has Administrator!`);
+            score -= 20;
+          }
+          if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+            high.push(`Role **${role.name}** can manage roles!`);
+            score -= 15;
+          }
+          if (role.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+            high.push(`Role **${role.name}** can ban members!`);
+            score -= 10;
+          }
+          if (role.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+            moderate.push(`Role **${role.name}** can kick members!`);
+            score -= 10;
+          }
+          if (role.permissions.has(PermissionsBitField.Flags.MentionEveryone)) {
+            moderate.push(`Role **${role.name}** can mention everyone!`);
+            score -= 5;
+          }
+          if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+            moderate.push(`Role **${role.name}** can manage messages!`);
+            score -= 10;
+          }
+          if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+            high.push(`Role **${role.name}** can manage channels!`);
+            score -= 10;
+          }
+        });
 
-      await interaction.followUp({ embeds: [embed] });
+        if (score < 0) score = 0;
+
+        const embed = new EmbedBuilder()
+          .setTitle("Server Security Audit")
+          .setColor(score > 70 ? "Green" : score > 40 ? "Yellow" : "Red")
+          .addFields(
+            { name: "Score", value: `${score}/100` },
+            { name: "🚨 Critical", value: critical.join("\n") || "None" },
+            { name: "⚠️ High", value: high.join("\n") || "None" },
+            { name: "⚠️ Moderate", value: moderate.join("\n") || "None" }
+          )
+          .setTimestamp()
+          .setFooter({ text: `NeuroEX Corporation • ${interaction.guild.name}` });
+
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
+
+      // ----------------------------
+      // /flags command
+      // ----------------------------
+      if (interaction.commandName === "flags") {
+        let output = Object.entries(flaggedUsers)
+          .map(([id, count]) => `<@${id}> — ${count}`)
+          .join("\n");
+
+        if (!output) output = "No users currently flagged.";
+
+        return interaction.reply({
+          content: `🚩 Flagged Users\n\n${output}`,
+          ephemeral: true
+        });
+      }
+
+      // ----------------------------
+      // /kick command
+      // ----------------------------
+      if (interaction.commandName === "kick") {
+        const member = interaction.options.getMember("target");
+        const reason = interaction.options.getString("reason") || "No reason";
+
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers))
+          return interaction.reply({ content: "❌ You do not have permission to kick.", ephemeral: true });
+
+        if (!member)
+          return interaction.reply({ content: "❌ Member not found.", ephemeral: true });
+
+        if (member.roles.highest.position >= interaction.member.roles.highest.position)
+          return interaction.reply({ content: "❌ Cannot kick a member with equal or higher role.", ephemeral: true });
+
+        await member.kick(reason);
+
+        if (config?.logsChannel) {
+          const logChannel = interaction.guild.channels.cache.get(config.logsChannel);
+          if (logChannel) logChannel.send(`🦵 **${member.user.tag}** was kicked by **${interaction.user.tag}** | Reason: ${reason}`);
+        }
+
+        return interaction.reply(`✅ Kicked **${member.user.tag}**`);
+      }
+
+      // ----------------------------
+      // /ban command
+      // ----------------------------
+      if (interaction.commandName === "ban") {
+        const member = interaction.options.getMember("target");
+        const reason = interaction.options.getString("reason") || "No reason";
+
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers))
+          return interaction.reply({ content: "❌ You do not have permission to ban.", ephemeral: true });
+
+        if (!member)
+          return interaction.reply({ content: "❌ Member not found.", ephemeral: true });
+
+        if (member.roles.highest.position >= interaction.member.roles.highest.position)
+          return interaction.reply({ content: "❌ Cannot ban a member with equal or higher role.", ephemeral: true });
+
+        await member.ban({ reason });
+
+        if (config?.logsChannel) {
+          const logChannel = interaction.guild.channels.cache.get(config.logsChannel);
+          if (logChannel) logChannel.send(`🔨 **${member.user.tag}** was banned by **${interaction.user.tag}** | Reason: ${reason}`);
+        }
+
+        return interaction.reply(`🔨 Banned **${member.user.tag}**`);
+      }
+
+      // ----------------------------
+      // /setup command
+      // ----------------------------
+      if (interaction.commandName === "setup") {
+        const embed = new EmbedBuilder()
+          .setTitle("NeuroEX Setup")
+          .setDescription("Configure bot permissions.\n\nSelect roles and logs channel.")
+          .setColor("Blue");
+
+        const roleMenu = new StringSelectMenuBuilder()
+          .setCustomId("setup_roles")
+          .setPlaceholder("Select access roles")
+          .setMinValues(1)
+          .setMaxValues(5);
+
+        interaction.guild.roles.cache
+          .filter(role => role.name !== "@everyone")
+          .first(25)
+          .forEach(role => roleMenu.addOptions({ label: role.name, value: role.id }));
+
+        const channelMenu = new ChannelSelectMenuBuilder()
+          .setCustomId("setup_logs")
+          .setPlaceholder("Select logs channel");
+
+        const buttons = new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId("setup_finish").setLabel("Finish").setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId("setup_cancel").setLabel("Cancel").setStyle(ButtonStyle.Danger)
+        );
+
+        return interaction.reply({
+          embeds: [embed],
+          components: [
+            new ActionRowBuilder().addComponents(roleMenu),
+            new ActionRowBuilder().addComponents(channelMenu),
+            buttons
+          ],
+          ephemeral: true
+        });
+      }
     }
 
-    // ------------------------
-    // /flags command
-    // ------------------------
-    else if (interaction.commandName === 'flags') {
-      let output = Object.entries(flaggedUsers)
-        .map(([id, count]) => `<@${id}> — ${count} flags`)
-        .join('\n');
+    // ----------------------------
+    // Menu/Buttons interactions
+    // ----------------------------
+    if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isChannelSelectMenu()) {
 
-      if (!output) output = "No users currently flagged.";
+      if (!serverConfig[guildId]) {
+        serverConfig[guildId] = {
+          setupComplete: false,
+          accessRoles: [],
+          logsChannel: null
+        };
+      }
 
-      await interaction.reply({ content: `🚩 **Flagged Users**\n\n${output}`, ephemeral: true });
+      // Save selected roles
+      if (interaction.customId === "setup_roles") {
+        serverConfig[guildId].accessRoles = interaction.values;
+        saveConfig();
+        return interaction.reply({ content: "✅ Access roles saved.", ephemeral: true });
+      }
+
+      // Save selected logs channel
+      if (interaction.customId === "setup_logs") {
+        serverConfig[guildId].logsChannel = interaction.values[0];
+        saveConfig();
+        return interaction.reply({ content: "✅ Logs channel saved.", ephemeral: true });
+      }
+
+      // Finish setup
+      if (interaction.customId === "setup_finish") {
+        serverConfig[guildId].setupComplete = true;
+        saveConfig();
+        return interaction.update({ content: "✅ Setup complete!", embeds: [], components: [] });
+      }
+
+      // Cancel setup
+      if (interaction.customId === "setup_cancel") {
+        serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
+        saveConfig();
+        return interaction.update({ content: "❌ Setup cancelled", embeds: [], components: [] });
+      }
     }
 
   } catch (error) {
     console.error(error);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'An error occurred while running the command.', ephemeral: true });
+    if (!interaction.replied) {
+      await interaction.reply({ content: "❌ An error occurred while running the command.", ephemeral: true });
     }
   }
 });
 
+// ----------------------------
 client.login(process.env.DISCORDAPP_TOKEN);
