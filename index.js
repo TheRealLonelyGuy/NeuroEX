@@ -16,7 +16,6 @@ const http = require('http');
 
 // ----------------------------
 // Keep bot awake (Render)
-// ----------------------------
 const SELF_URL = "https://neuroex.onrender.com";
 
 http.createServer((req, res) => {
@@ -34,7 +33,6 @@ setInterval(async () => {
 
 // ----------------------------
 // Storage
-// ----------------------------
 const flaggedUsers = {};
 let serverConfig = {};
 
@@ -48,7 +46,6 @@ function saveConfig() {
 
 // ----------------------------
 // Discord Client
-// ----------------------------
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -64,7 +61,6 @@ client.once("ready", () => {
 
 // ----------------------------
 // Link detection
-// ----------------------------
 client.on("messageCreate", async message => {
   if (message.author.bot) return;
 
@@ -72,7 +68,6 @@ client.on("messageCreate", async message => {
   if (!urlPattern.test(message.content)) return;
 
   const userId = message.author.id;
-
   if (!flaggedUsers[userId]) flaggedUsers[userId] = 0;
   flaggedUsers[userId]++;
 
@@ -94,7 +89,6 @@ client.on("messageCreate", async message => {
 
 // ----------------------------
 // Slash commands & interactions
-// ----------------------------
 client.on("interactionCreate", async interaction => {
   try {
     const guildId = interaction.guild?.id;
@@ -102,12 +96,10 @@ client.on("interactionCreate", async interaction => {
 
     // ----------------------------
     // Handle slash commands
-    // ----------------------------
     if (interaction.isChatInputCommand()) {
 
       // ----------------------------
       // Block commands before setup
-      // ----------------------------
       if (interaction.commandName !== "setup" &&
           (!serverConfig[guildId] || !serverConfig[guildId].setupComplete)) {
         return interaction.reply({
@@ -120,7 +112,6 @@ client.on("interactionCreate", async interaction => {
 
       // ----------------------------
       // Permission check based on roles
-      // ----------------------------
       if (config && config.accessRoles?.length > 0) {
         const hasRole = interaction.member.roles.cache.some(role =>
           config.accessRoles.includes(role.id)
@@ -135,7 +126,6 @@ client.on("interactionCreate", async interaction => {
 
       // ----------------------------
       // /audit command
-      // ----------------------------
       if (interaction.commandName === "audit") {
         const roles = interaction.guild.roles.cache;
         let score = 100;
@@ -144,34 +134,13 @@ client.on("interactionCreate", async interaction => {
         let moderate = [];
 
         roles.forEach(role => {
-          if (role.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            critical.push(`Role **${role.name}** has Administrator!`);
-            score -= 20;
-          }
-          if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            high.push(`Role **${role.name}** can manage roles!`);
-            score -= 15;
-          }
-          if (role.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-            high.push(`Role **${role.name}** can ban members!`);
-            score -= 10;
-          }
-          if (role.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-            moderate.push(`Role **${role.name}** can kick members!`);
-            score -= 10;
-          }
-          if (role.permissions.has(PermissionsBitField.Flags.MentionEveryone)) {
-            moderate.push(`Role **${role.name}** can mention everyone!`);
-            score -= 5;
-          }
-          if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-            moderate.push(`Role **${role.name}** can manage messages!`);
-            score -= 10;
-          }
-          if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
-            high.push(`Role **${role.name}** can manage channels!`);
-            score -= 10;
-          }
+          if (role.permissions.has(PermissionsBitField.Flags.Administrator)) { critical.push(`Role **${role.name}** has Administrator!`); score -= 20; }
+          if (role.permissions.has(PermissionsBitField.Flags.ManageRoles)) { high.push(`Role **${role.name}** can manage roles!`); score -= 15; }
+          if (role.permissions.has(PermissionsBitField.Flags.BanMembers)) { high.push(`Role **${role.name}** can ban members!`); score -= 10; }
+          if (role.permissions.has(PermissionsBitField.Flags.KickMembers)) { moderate.push(`Role **${role.name}** can kick members!`); score -= 10; }
+          if (role.permissions.has(PermissionsBitField.Flags.MentionEveryone)) { moderate.push(`Role **${role.name}** can mention everyone!`); score -= 5; }
+          if (role.permissions.has(PermissionsBitField.Flags.ManageMessages)) { moderate.push(`Role **${role.name}** can manage messages!`); score -= 10; }
+          if (role.permissions.has(PermissionsBitField.Flags.ManageChannels)) { high.push(`Role **${role.name}** can manage channels!`); score -= 10; }
         });
 
         if (score < 0) score = 0;
@@ -193,33 +162,24 @@ client.on("interactionCreate", async interaction => {
 
       // ----------------------------
       // /flags command
-      // ----------------------------
       if (interaction.commandName === "flags") {
         let output = Object.entries(flaggedUsers)
           .map(([id, count]) => `<@${id}> — ${count}`)
           .join("\n");
-
         if (!output) output = "No users currently flagged.";
-
-        return interaction.reply({
-          content: `🚩 Flagged Users\n\n${output}`,
-          ephemeral: true
-        });
+        return interaction.reply({ content: `🚩 Flagged Users\n\n${output}`, ephemeral: true });
       }
 
       // ----------------------------
       // /kick command
-      // ----------------------------
       if (interaction.commandName === "kick") {
         const member = interaction.options.getMember("target");
         const reason = interaction.options.getString("reason") || "No reason";
 
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers))
           return interaction.reply({ content: "❌ You do not have permission to kick.", ephemeral: true });
-
         if (!member)
           return interaction.reply({ content: "❌ Member not found.", ephemeral: true });
-
         if (member.roles.highest.position >= interaction.member.roles.highest.position)
           return interaction.reply({ content: "❌ Cannot kick a member with equal or higher role.", ephemeral: true });
 
@@ -235,17 +195,14 @@ client.on("interactionCreate", async interaction => {
 
       // ----------------------------
       // /ban command
-      // ----------------------------
       if (interaction.commandName === "ban") {
         const member = interaction.options.getMember("target");
         const reason = interaction.options.getString("reason") || "No reason";
 
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers))
           return interaction.reply({ content: "❌ You do not have permission to ban.", ephemeral: true });
-
         if (!member)
           return interaction.reply({ content: "❌ Member not found.", ephemeral: true });
-
         if (member.roles.highest.position >= interaction.member.roles.highest.position)
           return interaction.reply({ content: "❌ Cannot ban a member with equal or higher role.", ephemeral: true });
 
@@ -261,7 +218,6 @@ client.on("interactionCreate", async interaction => {
 
       // ----------------------------
       // /setup command
-      // ----------------------------
       if (interaction.commandName === "setup") {
         const embed = new EmbedBuilder()
           .setTitle("NeuroEX Setup")
@@ -283,7 +239,7 @@ client.on("interactionCreate", async interaction => {
           .setCustomId("setup_logs")
           .setPlaceholder("Select logs channel");
 
-        const buttons = new ActionRowBuilder().addComponents(
+        const buttonRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("setup_finish").setLabel("Finish").setStyle(ButtonStyle.Success),
           new ButtonBuilder().setCustomId("setup_cancel").setLabel("Cancel").setStyle(ButtonStyle.Danger)
         );
@@ -293,7 +249,7 @@ client.on("interactionCreate", async interaction => {
           components: [
             new ActionRowBuilder().addComponents(roleMenu),
             new ActionRowBuilder().addComponents(channelMenu),
-            buttons
+            buttonRow
           ],
           ephemeral: true
         });
@@ -301,40 +257,30 @@ client.on("interactionCreate", async interaction => {
     }
 
     // ----------------------------
-    // Menu/Buttons interactions
-    // ----------------------------
+    // Menu/Button interactions
     if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isChannelSelectMenu()) {
-
       if (!serverConfig[guildId]) {
-        serverConfig[guildId] = {
-          setupComplete: false,
-          accessRoles: [],
-          logsChannel: null
-        };
+        serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
       }
 
-      // Save selected roles
       if (interaction.customId === "setup_roles") {
         serverConfig[guildId].accessRoles = interaction.values;
         saveConfig();
         return interaction.reply({ content: "✅ Access roles saved.", ephemeral: true });
       }
 
-      // Save selected logs channel
       if (interaction.customId === "setup_logs") {
         serverConfig[guildId].logsChannel = interaction.values[0];
         saveConfig();
         return interaction.reply({ content: "✅ Logs channel saved.", ephemeral: true });
       }
 
-      // Finish setup
       if (interaction.customId === "setup_finish") {
         serverConfig[guildId].setupComplete = true;
         saveConfig();
         return interaction.update({ content: "✅ Setup complete!", embeds: [], components: [] });
       }
 
-      // Cancel setup
       if (interaction.customId === "setup_cancel") {
         serverConfig[guildId] = { setupComplete: false, accessRoles: [], logsChannel: null };
         saveConfig();
@@ -350,5 +296,4 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
-// ----------------------------
 client.login(process.env.DISCORDAPP_TOKEN);
