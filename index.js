@@ -187,7 +187,7 @@ client.on("interactionCreate", async interaction => {
 
         if (config?.logsChannel) {
           const logChannel = interaction.guild.channels.cache.get(config.logsChannel);
-          if (logChannel) logChannel.send(`**${member.user.tag}** was ${verb.toLowerCase()} by **${interaction.user.tag}** | Reason: ${reason}`);
+          if (logChannel?.isTextBased()) logChannel.send(`**${member.user.tag}** was ${verb.toLowerCase()} by **${interaction.user.tag}** | Reason: ${reason}`);
         }
 
         return interaction.editReply(`${verb} **${member.user.tag}**`);
